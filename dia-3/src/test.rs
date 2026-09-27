@@ -81,3 +81,37 @@ fn test_invest_not_whitelisted() {
     env.mock_all_auths();
     client.invest(&investor, &500);
 }
+
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn test_invest_amount_too_low() {
+    let env = Env::default();
+    let (admin, payment_token, _contract_id, client) = setup_with_payment_token(&env);
+    let investor = Address::generate(&env);
+
+    let token_admin = StellarAssetClient::new(&env, &payment_token);
+    token_admin.mint(&investor, &1_000);
+
+    env.mock_all_auths();
+    client.set_whitelist(&admin, &investor, &true);
+    client.invest(&investor, &100);
+}
+
+#[test]
+fn test_invest_minimum_amount_succeeds() {
+    let env = Env::default();
+    let (admin, payment_token, _contract_id, client) = setup_with_payment_token(&env);
+    let investor = Address::generate(&env);
+
+    let token_admin = StellarAssetClient::new(&env, &payment_token);
+    let token = TokenClient::new(&env, &payment_token);
+    token_admin.mint(&investor, &1_000);
+
+    env.mock_all_auths();
+    client.set_whitelist(&admin, &investor, &true);
+
+    let minted = client.invest(&investor, &500);
+    assert_eq!(minted, 5);
+    assert_eq!(client.balance(&investor), 5);
+    assert_eq!(token.balance(&investor), 500);
+}
